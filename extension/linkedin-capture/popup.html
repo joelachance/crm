@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CRM Social Capture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: #f6efe2;
+        color: #1b1a16;
+      }
+
+      .wrap {
+        padding: 16px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      p {
+        margin: 0 0 12px;
+        line-height: 1.45;
+        font-size: 13px;
+        color: rgba(27, 26, 22, 0.72);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 999px;
+        border: 1px solid rgba(27, 26, 22, 0.12);
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      input {
+        margin-bottom: 12px;
+        background: #fff;
+      }
+
+      button {
+        background: #1b1a16;
+        color: #f6efe2;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+      }
+
+      .status {
+        margin-top: 12px;
+        min-height: 18px;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .status.error {
+        color: #b75c52;
+      }
+
+      .status.success {
+        color: #29503b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>CRM Social Capture</h1>
+      <p>Open an authenticated LinkedIn or Twitter/X profile tab, then add that contact directly into your local CRM app.</p>
+
+      <label for="crmBaseUrl">CRM URL</label>
+      <input id="crmBaseUrl" type="url" />
+
+      <button id="captureButton" type="button">Add to CRM</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>

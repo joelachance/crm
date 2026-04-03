@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "CRM Social Capture",
+  "version": "0.1.0",
+  "description": "Capture the visible LinkedIn or Twitter/X profile text from the current browser tab and send it to the local CRM app.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "action": {
+    "default_title": "CRM Social Capture",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/in/*", "https://x.com/*", "https://twitter.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
