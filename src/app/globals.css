@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #050505;
+  font-family: "SF Pro Display", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 28%),
+    linear-gradient(180deg, #090909 0%, #050505 100%);
+  color: #f4f4f0;
+}
+
+.font-serif {
+  font-family: "SF Pro Display", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.font-mono-ui {
+  font-family: "SFMono-Regular", "JetBrains Mono", "Menlo", monospace;
+}
+
+textarea {
+  resize: vertical;
+}
+
+select,
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(244, 244, 240, 0.16);
+}
+
+@keyframes app-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@layer components {
+  .app-wordmark {
+    font-family: var(--font-era), "SF Pro Display", "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 2rem;
+    text-transform: uppercase;
+  }
+
+  .app-display {
+    font-family: var(--font-era), "SF Pro Display", "Avenir Next", "Segoe UI", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .app-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: app-marquee 26s linear infinite;
+  }
+
+  .app-marquee-item {
+    @apply flex items-center gap-3 border-r border-white/10 px-5 py-3 text-[11px] uppercase tracking-[0.18em] leading-none;
+    color: rgba(255, 255, 255, 0.58);
+  }
+
+  .app-panel {
+    @apply rounded-none border border-white/10 bg-[#070707]/90;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .app-panel-muted {
+    @apply rounded-none border border-white/10 bg-[#0a0a0a];
+  }
+
+  .app-section-title {
+    @apply font-mono-ui text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45;
+  }
+
+  .app-copy {
+    @apply text-sm leading-6 text-white/60;
+  }
+
+  .app-details summary {
+    list-style: none;
+  }
+
+  .app-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .app-input {
+    @apply w-full rounded-none border border-white/10 bg-[#050505] px-3 py-3 text-sm text-white outline-none transition;
+  }
+
+  .app-input:focus {
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .app-textarea {
+    @apply min-h-28 w-full rounded-none border border-white/10 bg-[#050505] px-3 py-3 text-sm leading-6 text-white outline-none transition;
+  }
+
+  .app-textarea:focus {
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .app-button {
+    @apply inline-flex items-center justify-center rounded-none border border-white/10 bg-white px-4 py-3 text-sm font-semibold text-black transition;
+  }
+
+  .app-button:hover {
+    background: #d9d9d3;
+  }
+
+  .app-button-secondary {
+    @apply inline-flex items-center justify-center rounded-none border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm font-medium text-white/80 transition;
+  }
+
+  .app-button-secondary:hover {
+    @apply border-white/25 text-white;
+  }
+}
