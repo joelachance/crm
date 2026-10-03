@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { approveOutreachDraftAction } from "@/app/outreach-actions";
 import { DraftContactContext } from "@/components/draft-contact-context";
+import { DraftResponsePanel } from "@/components/draft-response-panel";
 import type { OutreachDraftForReview } from "@/lib/types";
 import { prettyDate } from "@/lib/utils";
 
@@ -69,6 +70,7 @@ function DraftCard({
       </div>
 
       <DraftContactContext draft={draft} />
+      <DraftResponsePanel draft={draft} />
 
       {isEditable ? (
         <form

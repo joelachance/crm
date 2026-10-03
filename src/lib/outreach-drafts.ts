@@ -3,12 +3,14 @@ import { cache } from "react";
 import { getPeople } from "@/lib/crm";
 import { ensureSchema, getDefaultReviewerName, getDatabaseMode, sql } from "@/lib/db";
 import { mergeResearchLinks, parseOutreachResearchLinks } from "@/lib/outreach-review-links";
+import { getCrmLatestReply } from "@/lib/outreach-response";
 import type {
   OutreachChannel,
   OutreachDraft,
   OutreachDraftForReview,
   OutreachDraftResearchLink,
   OutreachDraftStatus,
+  OutreachResponseState,
   PersonSummary
 } from "@/lib/types";
 
@@ -29,8 +31,16 @@ type DbOutreachDraft = {
   approved_at: string | null;
   scheduled_at: string | null;
   scheduled_by: string | null;
+  response_state: string | null;
+  replied_at: string | null;
+  replied_by: string | null;
+  response_snippet: string | null;
   created_at: string;
 };
+
+function normalizeResponseState(value: string | null | undefined): OutreachResponseState {
+  return value === "replied" ? "replied" : "none";
+}
 
 function mapOutreachDraft(row: DbOutreachDraft): OutreachDraft {
   return {
@@ -50,6 +60,10 @@ function mapOutreachDraft(row: DbOutreachDraft): OutreachDraft {
     approvedAt: row.approved_at,
     scheduledAt: row.scheduled_at,
     scheduledBy: row.scheduled_by,
+    responseState: normalizeResponseState(row.response_state),
+    repliedAt: row.replied_at,
+    repliedBy: row.replied_by,
+    responseSnippet: row.response_snippet,
     createdAt: row.created_at
   };
 }
@@ -60,7 +74,8 @@ function enrichDraftForReview(draft: OutreachDraft, peopleById: Map<number, Pers
   return {
     ...draft,
     person,
-    mergedResearchLinks: mergeResearchLinks(draft.researchLinks, person)
+    mergedResearchLinks: mergeResearchLinks(draft.researchLinks, person),
+    crmLatestReply: getCrmLatestReply(person)
   };
 }
 
@@ -100,6 +115,10 @@ async function loadOutreachDraftsForReviewDate(reviewDate: string) {
       approved_at,
       scheduled_at,
       scheduled_by,
+      response_state,
+      replied_at,
+      replied_by,
+      response_snippet,
       created_at
     FROM outreach_drafts
     WHERE review_date = ${reviewDate}
@@ -118,6 +137,39 @@ async function loadOutreachDraftsForReviewDate(reviewDate: string) {
 }
 
 export const getOutreachDraftsForReviewDate = cache(loadOutreachDraftsForReviewDate);
+
+export async function listAllOutreachDrafts(): Promise<OutreachDraft[]> {
+  await ensureSchema();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      review_date,
+      person_id,
+      recipient_name,
+      recipient_company,
+      channel,
+      subject,
+      body,
+      research_links,
+      status,
+      approved_by,
+      approved_subject,
+      approved_body,
+      approved_at,
+      scheduled_at,
+      scheduled_by,
+      response_state,
+      replied_at,
+      replied_by,
+      response_snippet,
+      created_at
+    FROM outreach_drafts
+    ORDER BY review_date DESC, created_at DESC, id DESC;
+  `) as DbOutreachDraft[];
+
+  return rows.map(mapOutreachDraft);
+}
 
 export async function getOutreachDraftsForReview(reviewDate: string): Promise<OutreachDraftForReview[]> {
   const drafts = await loadOutreachDraftsForReviewDate(reviewDate);
@@ -244,6 +296,37 @@ export async function markOutreachDraftScheduled(input: {
   `;
 }
 
+export async function markOutreachDraftReplied(input: {
+  draftId: number;
+  repliedBy: string;
+  repliedAt?: string;
+  responseSnippet?: string | null;
+}) {
+  await ensureSchema();
+
+  const repliedAt = input.repliedAt ?? new Date().toISOString();
+  const repliedBy = input.repliedBy.trim();
+
+  await sql`
+    UPDATE outreach_drafts
+    SET
+      response_state = 'replied',
+      replied_at = ${repliedAt},
+      replied_by = ${repliedBy},
+      response_snippet = ${input.responseSnippet ?? null}
+    WHERE id = ${input.draftId};
+  `;
+
+  const rows = (await sql`
+    SELECT review_date
+    FROM outreach_drafts
+    WHERE id = ${input.draftId}
+    LIMIT 1;
+  `) as Array<{ review_date: string }>;
+
+  return rows[0]?.review_date ?? null;
+}
+
 /** Local-only demo rows so the review page is testable without Neon. */
 export async function seedDemoOutreachDraftsIfEmpty(reviewDate: string) {
   const existing = await loadOutreachDraftsForReviewDate(reviewDate);
@@ -252,7 +335,7 @@ export async function seedDemoOutreachDraftsIfEmpty(reviewDate: string) {
     return false;
   }
 
-  const { createPerson, getOrCreateProductTag, assignProductTagToPerson } = await import("@/lib/crm");
+  const { assignProductTagToPerson, createMessageTurn, createPerson, getOrCreateProductTag } = await import("@/lib/crm");
 
   const memkitTagId = await getOrCreateProductTag("MemKit");
 
@@ -289,7 +372,21 @@ export async function seedDemoOutreachDraftsIfEmpty(reviewDate: string) {
     await assignProductTagToPerson(alexId, memkitTagId, false);
   }
 
-  await createOutreachDraft({
+  if (mayaId) {
+    const sentAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const respondedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
+    await createMessageTurn({
+      personId: mayaId,
+      outboundMessage: "Hi Maya — following up on outreach review tooling.",
+      sentAt,
+      responded: true,
+      responseMessage: "Thanks Joe — happy to compare notes next week. Thursday afternoon works.",
+      respondedAt
+    });
+  }
+
+  const mayaDraftId = await createOutreachDraft({
     reviewDate,
     personId: mayaId,
     recipientName: "Maya Chen",
@@ -303,6 +400,14 @@ export async function seedDemoOutreachDraftsIfEmpty(reviewDate: string) {
       { label: "Podcast appearance", url: "https://podcasts.example/episodes/northwind-maya" }
     ]
   });
+
+  if (mayaDraftId) {
+    await markOutreachDraftReplied({
+      draftId: mayaDraftId,
+      repliedBy: "Outreach assistant",
+      responseSnippet: "Confirmed interest — Thursday afternoon works."
+    });
+  }
 
   await createOutreachDraft({
     reviewDate,

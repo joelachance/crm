@@ -170,12 +170,20 @@ export default async function HomePage() {
             <h1 className="app-wordmark text-white">ERA</h1>
             <EraTagline />
           </div>
-          <a
-            className="app-button-secondary px-4 py-2 text-xs uppercase tracking-[0.16em] text-white/80"
-            href={`/review/${reviewDate}`}
-          >
-            Today&apos;s outreach review
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              className="app-button-secondary px-4 py-2 text-xs uppercase tracking-[0.16em] text-white/80"
+              href="/outreach"
+            >
+              Outreach table
+            </a>
+            <a
+              className="app-button-secondary px-4 py-2 text-xs uppercase tracking-[0.16em] text-white/80"
+              href={`/review/${reviewDate}`}
+            >
+              Today&apos;s outreach review
+            </a>
+          </div>
         </div>
         {databaseMode === "sqlite" ? (
           <p className="max-w-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">

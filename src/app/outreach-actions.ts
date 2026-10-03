@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { approveOutreachDraft, isValidReviewDate } from "@/lib/outreach-drafts";
+import { approveOutreachDraft, isValidReviewDate, markOutreachDraftReplied } from "@/lib/outreach-drafts";
 
 const approveSchema = z.object({
   draftId: z.coerce.number().int().positive(),
@@ -30,4 +30,31 @@ export async function approveOutreachDraftAction(formData: FormData) {
   });
 
   revalidatePath(`/review/${parsed.reviewDate}`);
+  revalidatePath("/outreach");
+}
+
+const markRepliedSchema = z.object({
+  draftId: z.coerce.number().int().positive(),
+  responseSnippet: z.string().trim().optional(),
+  repliedBy: z.string().trim().optional()
+});
+
+export async function markOutreachDraftRepliedAction(formData: FormData) {
+  const parsed = markRepliedSchema.parse({
+    draftId: formData.get("draftId"),
+    responseSnippet: formData.get("responseSnippet"),
+    repliedBy: formData.get("repliedBy")
+  });
+
+  const reviewDate = await markOutreachDraftReplied({
+    draftId: parsed.draftId,
+    repliedBy: parsed.repliedBy || "Outreach assistant",
+    responseSnippet: parsed.responseSnippet || null
+  });
+
+  revalidatePath("/outreach");
+
+  if (reviewDate) {
+    revalidatePath(`/review/${reviewDate}`);
+  }
 }
