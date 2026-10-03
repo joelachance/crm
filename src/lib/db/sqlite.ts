@@ -28,19 +28,30 @@ function buildQuery(strings: TemplateStringsArray, params: unknown[]) {
   return query;
 }
 
+function bindSqliteParams(params: unknown[]) {
+  return params.map((param) => {
+    if (typeof param === "boolean") {
+      return param ? 1 : 0;
+    }
+
+    return param;
+  });
+}
+
 export function sqliteSql(strings: TemplateStringsArray, ...params: unknown[]) {
   const db = getDatabase();
   const query = buildQuery(strings, params);
   const statement = db.prepare(query);
+  const boundParams = bindSqliteParams(params);
 
   const firstChunk = strings[0].trimStart().toUpperCase();
 
   if (firstChunk.startsWith("SELECT") || firstChunk.startsWith("WITH")) {
-    return Promise.resolve(statement.all(...params));
+    return Promise.resolve(statement.all(...boundParams));
   }
 
   if (firstChunk.startsWith("INSERT") && query.toUpperCase().includes("RETURNING")) {
-    const info = statement.run(...params);
+    const info = statement.run(...boundParams);
     const tableMatch = query.match(/INSERT\s+INTO\s+(\w+)/i);
     const table = tableMatch?.[1];
 
@@ -52,7 +63,7 @@ export function sqliteSql(strings: TemplateStringsArray, ...params: unknown[]) {
     return Promise.resolve([{ id: info.lastInsertRowid }]);
   }
 
-  const info = statement.run(...params);
+  const info = statement.run(...boundParams);
   return Promise.resolve([{ changes: info.changes, lastInsertRowid: info.lastInsertRowid }]);
 }
 
@@ -128,17 +139,29 @@ export async function ensureSqliteSchema() {
       scheduled_at TEXT,
       scheduled_by TEXT,
       research_links TEXT NOT NULL DEFAULT '[]',
+      response_state TEXT NOT NULL DEFAULT 'none' CHECK (response_state IN ('none', 'replied')),
+      replied_at TEXT,
+      replied_by TEXT,
+      response_snippet TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE INDEX IF NOT EXISTS idx_outreach_drafts_review_date ON outreach_drafts(review_date);
   `);
 
-  const outreachColumns = db.prepare("PRAGMA table_info(outreach_drafts)").all() as Array<{ name: string }>;
+  function ensureOutreachColumn(columnName: string, definition: string) {
+    const columns = db.prepare("PRAGMA table_info(outreach_drafts)").all() as Array<{ name: string }>;
 
-  if (!outreachColumns.some((column) => column.name === "research_links")) {
-    db.exec(`ALTER TABLE outreach_drafts ADD COLUMN research_links TEXT NOT NULL DEFAULT '[]';`);
+    if (!columns.some((column) => column.name === columnName)) {
+      db.exec(`ALTER TABLE outreach_drafts ADD COLUMN ${definition};`);
+    }
   }
+
+  ensureOutreachColumn("research_links", "research_links TEXT NOT NULL DEFAULT '[]'");
+  ensureOutreachColumn("response_state", "response_state TEXT NOT NULL DEFAULT 'none'");
+  ensureOutreachColumn("replied_at", "replied_at TEXT");
+  ensureOutreachColumn("replied_by", "replied_by TEXT");
+  ensureOutreachColumn("response_snippet", "response_snippet TEXT");
 
   db.prepare(
     `
