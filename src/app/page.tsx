@@ -2,7 +2,8 @@ import { CreatePersonForm } from "@/components/create-person-form";
 import { CustomersTable } from "@/components/customers-table";
 import { EraTagline } from "@/components/era-tagline";
 import { getPeople } from "@/lib/crm";
-import { isDatabaseConfigured } from "@/lib/db";
+import { getDatabaseMode } from "@/lib/db";
+import { todayReviewDateInChicago } from "@/lib/outreach-drafts";
 import type { PersonSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -152,25 +153,9 @@ function buildMarqueeItems(people: PersonSummary[]) {
 }
 
 export default async function HomePage() {
-  if (!isDatabaseConfigured()) {
-    return (
-      <section className="app-panel space-y-5 p-6 md:p-8">
-        <span className="app-section-title">
-          Setup required
-        </span>
-        <div className="">
-          <h1 className="app-wordmark text-white">ERA</h1>
-          <EraTagline />
-        </div>
-        <div className="max-w-2xl space-y-3 text-sm leading-7 text-white/62">
-          <p>Copy `.env.example` to `.env.local` and set `DATABASE_URL` to your Neon Postgres URL.</p>
-          <p>Once that variable exists, refresh the page and the app will create the required tables automatically on first load.</p>
-        </div>
-      </section>
-    );
-  }
-
   const people = await getPeople(true);
+  const reviewDate = todayReviewDateInChicago();
+  const databaseMode = getDatabaseMode();
 
   const activeCount = people.filter((person) => !person.archived).length;
   const icpAssignments = people.flatMap((person) => person.productAssignments).filter((assignment) => assignment.isIcp).length;
@@ -180,10 +165,23 @@ export default async function HomePage() {
   return (
     <div className="space-y-4">
       <section className="space-y-3 border-b border-white/10 pb-4">
-        <div className="space-y-1">
-          <h1 className="app-wordmark text-white">ERA</h1>
-          <EraTagline />
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="app-wordmark text-white">ERA</h1>
+            <EraTagline />
+          </div>
+          <a
+            className="app-button-secondary px-4 py-2 text-xs uppercase tracking-[0.16em] text-white/80"
+            href={`/review/${reviewDate}`}
+          >
+            Today&apos;s outreach review
+          </a>
         </div>
+        {databaseMode === "sqlite" ? (
+          <p className="max-w-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+            Local SQLite mode (no DATABASE_URL). Outreach review and CRM data are stored under `.data/era-local.sqlite` until Neon is configured.
+          </p>
+        ) : null}
       </section>
 
       <section className="app-panel overflow-hidden">

@@ -1,6 +1,6 @@
 import { cache } from "react";
 
-import { ensureSchema, sql } from "@/lib/db";
+import { ensureSchema, getDatabaseMode, sql } from "@/lib/db";
 import { detectSocialPlatform, emptyLinkedInPrefillFields } from "@/lib/linkedin-import";
 import { defaultProductTagColor, normalizeProductTagColor } from "@/lib/utils";
 import type {
@@ -64,6 +64,10 @@ type DbLinkedInCapture = {
   created_at: string;
 };
 
+function asBoolean(value: boolean | number) {
+  return value === true || value === 1;
+}
+
 function mapProductTag(row: DbTag): ProductTag {
   return {
     id: row.id,
@@ -79,7 +83,7 @@ function mapAssignment(row: DbAssignment): ProductAssignment {
     productTagId: row.product_tag_id,
     productTagName: row.name,
     productTagColor: normalizeProductTagColor(row.color) ?? defaultProductTagColor(row.name),
-    isIcp: row.is_icp
+    isIcp: asBoolean(row.is_icp as boolean | number)
   };
 }
 
@@ -88,7 +92,7 @@ function mapMessageTurn(row: DbMessageTurn): MessageTurn {
     id: row.id,
     outboundMessage: row.outbound_message,
     responseMessage: row.response_message,
-    responded: row.responded,
+    responded: asBoolean(row.responded as boolean | number),
     sentAt: row.sent_at,
     respondedAt: row.responded_at,
     createdAt: row.created_at
@@ -111,7 +115,7 @@ function mapPerson(
     redditUrl: person.reddit_url,
     resume: person.resume,
     notes: person.notes,
-    archived: person.archived,
+    archived: asBoolean(person.archived as boolean | number),
     createdAt: person.created_at,
     updatedAt: person.updated_at,
     productAssignments: assignments,
@@ -541,20 +545,39 @@ export async function createLinkedInCapture(input: {
 
   const captureId = crypto.randomUUID();
 
-  await sql`
-    INSERT INTO linkedin_captures (
-      id,
-      source_url,
-      profile_text,
-      extracted_fields
-    )
-    VALUES (
-      ${captureId},
-      ${input.sourceUrl},
-      ${input.profileText},
-      ${JSON.stringify(input.fields)}::jsonb
-    );
-  `;
+  const extractedFields = JSON.stringify(input.fields);
+
+  if (getDatabaseMode() === "neon") {
+    await sql`
+      INSERT INTO linkedin_captures (
+        id,
+        source_url,
+        profile_text,
+        extracted_fields
+      )
+      VALUES (
+        ${captureId},
+        ${input.sourceUrl},
+        ${input.profileText},
+        ${extractedFields}::jsonb
+      );
+    `;
+  } else {
+    await sql`
+      INSERT INTO linkedin_captures (
+        id,
+        source_url,
+        profile_text,
+        extracted_fields
+      )
+      VALUES (
+        ${captureId},
+        ${input.sourceUrl},
+        ${input.profileText},
+        ${extractedFields}
+      );
+    `;
+  }
 
   return captureId;
 }

@@ -3,15 +3,10 @@ import { notFound } from "next/navigation";
 
 import { MessageTimeline, PersonAssignments, PersonEditor } from "@/components/forms";
 import { getPersonDetail } from "@/lib/crm";
-import { isDatabaseConfigured } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
-  if (!isDatabaseConfigured()) {
-    notFound();
-  }
-
   const { id } = await params;
   const person = await getPersonDetail(Number(id));
 

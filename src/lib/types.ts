@@ -63,3 +63,38 @@ export type PersonSummary = {
 export type PersonDetail = PersonSummary & {
   allProductTags: ProductTag[];
 };
+
+export type OutreachChannel = "email" | "linkedin";
+
+export type OutreachDraftStatus = "pending_review" | "approved" | "scheduled" | "sent";
+
+export type OutreachDraftResearchLink = {
+  label: string;
+  url: string;
+};
+
+export type OutreachDraft = {
+  id: number;
+  reviewDate: string;
+  personId: number | null;
+  recipientName: string;
+  recipientCompany: string | null;
+  channel: OutreachChannel;
+  subject: string | null;
+  body: string;
+  researchLinks: OutreachDraftResearchLink[];
+  status: OutreachDraftStatus;
+  approvedBy: string | null;
+  approvedSubject: string | null;
+  approvedBody: string | null;
+  approvedAt: string | null;
+  scheduledAt: string | null;
+  scheduledBy: string | null;
+  createdAt: string;
+};
+
+/** Draft plus linked CRM person (when person_id is set) for the review page. */
+export type OutreachDraftForReview = OutreachDraft & {
+  person: PersonSummary | null;
+  mergedResearchLinks: OutreachDraftResearchLink[];
+};
