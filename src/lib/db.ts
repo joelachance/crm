@@ -146,8 +146,13 @@ async function ensurePostgresSchema() {
         approved_at TIMESTAMPTZ,
         scheduled_at TIMESTAMPTZ,
         scheduled_by TEXT,
+        research_links JSONB NOT NULL DEFAULT '[]'::jsonb,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `,
+    neonSql`
+      ALTER TABLE outreach_drafts
+      ADD COLUMN IF NOT EXISTS research_links JSONB NOT NULL DEFAULT '[]'::jsonb;
     `,
     neonSql`
       CREATE INDEX IF NOT EXISTS idx_outreach_drafts_review_date ON outreach_drafts(review_date);

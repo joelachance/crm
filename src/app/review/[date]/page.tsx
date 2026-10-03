@@ -3,10 +3,9 @@ import { notFound } from "next/navigation";
 import { DailyReview } from "@/components/daily-review";
 import { getDatabaseMode, getDefaultReviewerName } from "@/lib/db";
 import {
-  getOutreachDraftsForReviewDate,
+  getOutreachDraftsForReview,
   isValidReviewDate,
-  seedDemoOutreachDraftsIfEmpty,
-  todayReviewDateInChicago
+  seedDemoOutreachDraftsIfEmpty
 } from "@/lib/outreach-drafts";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ export default async function DailyReviewPage({ params }: PageProps) {
     await seedDemoOutreachDraftsIfEmpty(date);
   }
 
-  const drafts = await getOutreachDraftsForReviewDate(date);
+  const drafts = await getOutreachDraftsForReview(date);
 
   return (
     <DailyReview

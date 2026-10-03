@@ -68,6 +68,11 @@ export type OutreachChannel = "email" | "linkedin";
 
 export type OutreachDraftStatus = "pending_review" | "approved" | "scheduled" | "sent";
 
+export type OutreachDraftResearchLink = {
+  label: string;
+  url: string;
+};
+
 export type OutreachDraft = {
   id: number;
   reviewDate: string;
@@ -77,6 +82,7 @@ export type OutreachDraft = {
   channel: OutreachChannel;
   subject: string | null;
   body: string;
+  researchLinks: OutreachDraftResearchLink[];
   status: OutreachDraftStatus;
   approvedBy: string | null;
   approvedSubject: string | null;
@@ -85,4 +91,10 @@ export type OutreachDraft = {
   scheduledAt: string | null;
   scheduledBy: string | null;
   createdAt: string;
+};
+
+/** Draft plus linked CRM person (when person_id is set) for the review page. */
+export type OutreachDraftForReview = OutreachDraft & {
+  person: PersonSummary | null;
+  mergedResearchLinks: OutreachDraftResearchLink[];
 };

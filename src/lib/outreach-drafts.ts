@@ -1,7 +1,16 @@
 import { cache } from "react";
 
-import { ensureSchema, getDefaultReviewerName, sql } from "@/lib/db";
-import type { OutreachChannel, OutreachDraft, OutreachDraftStatus } from "@/lib/types";
+import { getPeople } from "@/lib/crm";
+import { ensureSchema, getDefaultReviewerName, getDatabaseMode, sql } from "@/lib/db";
+import { mergeResearchLinks, parseOutreachResearchLinks } from "@/lib/outreach-review-links";
+import type {
+  OutreachChannel,
+  OutreachDraft,
+  OutreachDraftForReview,
+  OutreachDraftResearchLink,
+  OutreachDraftStatus,
+  PersonSummary
+} from "@/lib/types";
 
 type DbOutreachDraft = {
   id: number;
@@ -12,6 +21,7 @@ type DbOutreachDraft = {
   channel: OutreachChannel;
   subject: string | null;
   body: string;
+  research_links: unknown;
   status: OutreachDraftStatus;
   approved_by: string | null;
   approved_subject: string | null;
@@ -32,6 +42,7 @@ function mapOutreachDraft(row: DbOutreachDraft): OutreachDraft {
     channel: row.channel,
     subject: row.subject,
     body: row.body,
+    researchLinks: parseOutreachResearchLinks(row.research_links),
     status: row.status,
     approvedBy: row.approved_by,
     approvedSubject: row.approved_subject,
@@ -40,6 +51,16 @@ function mapOutreachDraft(row: DbOutreachDraft): OutreachDraft {
     scheduledAt: row.scheduled_at,
     scheduledBy: row.scheduled_by,
     createdAt: row.created_at
+  };
+}
+
+function enrichDraftForReview(draft: OutreachDraft, peopleById: Map<number, PersonSummary>): OutreachDraftForReview {
+  const person = draft.personId ? peopleById.get(draft.personId) ?? null : null;
+
+  return {
+    ...draft,
+    person,
+    mergedResearchLinks: mergeResearchLinks(draft.researchLinks, person)
   };
 }
 
@@ -71,6 +92,7 @@ async function loadOutreachDraftsForReviewDate(reviewDate: string) {
       channel,
       subject,
       body,
+      research_links,
       status,
       approved_by,
       approved_subject,
@@ -97,6 +119,18 @@ async function loadOutreachDraftsForReviewDate(reviewDate: string) {
 
 export const getOutreachDraftsForReviewDate = cache(loadOutreachDraftsForReviewDate);
 
+export async function getOutreachDraftsForReview(reviewDate: string): Promise<OutreachDraftForReview[]> {
+  const drafts = await loadOutreachDraftsForReviewDate(reviewDate);
+  const people = await getPeople(true);
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+
+  return drafts.map((draft) => enrichDraftForReview(draft, peopleById));
+}
+
+function serializeResearchLinks(links: OutreachDraftResearchLink[]) {
+  return JSON.stringify(links);
+}
+
 export async function createOutreachDraft(input: {
   reviewDate: string;
   personId?: number | null;
@@ -105,8 +139,39 @@ export async function createOutreachDraft(input: {
   channel: OutreachChannel;
   subject?: string | null;
   body: string;
+  researchLinks?: OutreachDraftResearchLink[];
 }) {
   await ensureSchema();
+
+  const researchLinks = serializeResearchLinks(input.researchLinks ?? []);
+
+  if (getDatabaseMode() === "neon") {
+    const rows = (await sql`
+      INSERT INTO outreach_drafts (
+        review_date,
+        person_id,
+        recipient_name,
+        recipient_company,
+        channel,
+        subject,
+        body,
+        research_links
+      )
+      VALUES (
+        ${input.reviewDate},
+        ${input.personId ?? null},
+        ${input.recipientName},
+        ${input.recipientCompany ?? null},
+        ${input.channel},
+        ${input.subject ?? null},
+        ${input.body},
+        ${researchLinks}::jsonb
+      )
+      RETURNING id;
+    `) as Array<{ id: number }>;
+
+    return rows[0]?.id ?? null;
+  }
 
   const rows = (await sql`
     INSERT INTO outreach_drafts (
@@ -116,7 +181,8 @@ export async function createOutreachDraft(input: {
       recipient_company,
       channel,
       subject,
-      body
+      body,
+      research_links
     )
     VALUES (
       ${input.reviewDate},
@@ -125,7 +191,8 @@ export async function createOutreachDraft(input: {
       ${input.recipientCompany ?? null},
       ${input.channel},
       ${input.subject ?? null},
-      ${input.body}
+      ${input.body},
+      ${researchLinks}
     )
     RETURNING id;
   `) as Array<{ id: number }>;
@@ -185,23 +252,67 @@ export async function seedDemoOutreachDraftsIfEmpty(reviewDate: string) {
     return false;
   }
 
+  const { createPerson, getOrCreateProductTag, assignProductTagToPerson } = await import("@/lib/crm");
+
+  const memkitTagId = await getOrCreateProductTag("MemKit");
+
+  const mayaId = await createPerson({
+    fullName: "Maya Chen",
+    companyName: "Northwind Labs",
+    email: "maya.chen@northwindlabs.example",
+    phoneNumber: "+1 312-555-0142",
+    linkedinUrl: "https://www.linkedin.com/in/maya-chen-northwind",
+    twitterUrl: null,
+    redditUrl: null,
+    resume:
+      "VP Product at Northwind Labs (Chicago). Previously led growth product at a Series B devtools startup. Focus: PLG, onboarding, and sales-assist workflows.",
+    notes: "Warm intro via portfolio founder. Asked about outreach ops tooling on a podcast last month."
+  });
+
+  if (mayaId && memkitTagId) {
+    await assignProductTagToPerson(mayaId, memkitTagId, true);
+  }
+
+  const alexId = await createPerson({
+    fullName: "Alex Rivera",
+    companyName: "Signal Harbor",
+    email: null,
+    phoneNumber: null,
+    linkedinUrl: "https://www.linkedin.com/in/alex-rivera-signal",
+    twitterUrl: "https://x.com/alexrivera_gtm",
+    redditUrl: null,
+    resume: "Head of GTM at Signal Harbor (remote, US). Founder-led sales background; posts often about sequencing and review loops.",
+    notes: "Engaged with our launch thread. No email on file — LinkedIn-first."
+  });
+
+  if (alexId && memkitTagId) {
+    await assignProductTagToPerson(alexId, memkitTagId, false);
+  }
+
   await createOutreachDraft({
     reviewDate,
+    personId: mayaId,
     recipientName: "Maya Chen",
     recipientCompany: "Northwind Labs",
     channel: "email",
     subject: "Quick intro — ERA outreach workflow",
     body:
-      "Hi Maya,\n\nI wanted to reach out about how your team handles daily outreach review. Would you be open to a short conversation next week?\n\nBest,\nJoe"
+      "Hi Maya,\n\nI wanted to reach out about how your team handles daily outreach review. Would you be open to a short conversation next week?\n\nBest,\nJoe",
+    researchLinks: [
+      { label: "Company site", url: "https://northwindlabs.example" },
+      { label: "Podcast appearance", url: "https://podcasts.example/episodes/northwind-maya" }
+    ]
   });
 
   await createOutreachDraft({
     reviewDate,
+    personId: alexId,
     recipientName: "Alex Rivera",
     recipientCompany: "Signal Harbor",
     channel: "linkedin",
     body:
-      "Hi Alex — saw your post on founder-led sales. We're tightening our review loop so drafts get approved in-app before anything is scheduled. Open to connect?"
+      "Hi Alex — saw your post on founder-led sales. We're tightening our review loop so drafts get approved in-app before anything is scheduled. Open to connect?",
+    researchLinks: [{ label: "Recent GTM article", url: "https://signalharbor.example/blog/founder-led-sequences" }]
   });
 
   return true;

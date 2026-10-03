@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { approveOutreachDraftAction } from "@/app/outreach-actions";
-import type { OutreachDraft } from "@/lib/types";
+import { DraftContactContext } from "@/components/draft-contact-context";
+import type { OutreachDraftForReview } from "@/lib/types";
 import { prettyDate } from "@/lib/utils";
 
-function statusLabel(status: OutreachDraft["status"]) {
+function statusLabel(status: OutreachDraftForReview["status"]) {
   switch (status) {
     case "pending_review":
       return "Needs review";
@@ -21,7 +22,7 @@ function statusLabel(status: OutreachDraft["status"]) {
   }
 }
 
-function statusClass(status: OutreachDraft["status"]) {
+function statusClass(status: OutreachDraftForReview["status"]) {
   switch (status) {
     case "pending_review":
       return "border-amber-500/30 bg-amber-500/10 text-amber-200";
@@ -39,7 +40,7 @@ function DraftCard({
   reviewDate,
   defaultReviewerName
 }: {
-  draft: OutreachDraft;
+  draft: OutreachDraftForReview;
   reviewDate: string;
   defaultReviewerName: string;
 }) {
@@ -51,26 +52,23 @@ function DraftCard({
   const [body, setBody] = useState(displayBody);
   const [saved, setSaved] = useState(false);
 
-  const recipientLine = draft.recipientCompany
-    ? `${draft.recipientName} · ${draft.recipientCompany}`
-    : draft.recipientName;
+  const displayName = draft.person?.fullName ?? draft.recipientName;
+  const displayCompany = draft.person?.companyName ?? draft.recipientCompany;
+  const headline = displayCompany ? `${displayName} · ${displayCompany}` : displayName;
 
   return (
     <article className="app-panel space-y-4 p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="app-section-title">{draft.channel === "email" ? "Email draft" : "LinkedIn draft"}</p>
-          <h2 className="text-lg font-semibold text-white">{recipientLine}</h2>
-          {draft.personId ? (
-            <p className="text-xs text-white/40">
-              Linked contact ID {draft.personId}
-            </p>
-          ) : null}
+          <h2 className="text-lg font-semibold text-white">{headline}</h2>
         </div>
         <span className={`font-mono-ui border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusClass(draft.status)}`}>
           {statusLabel(draft.status)}
         </span>
       </div>
+
+      <DraftContactContext draft={draft} />
 
       {isEditable ? (
         <form
@@ -78,6 +76,7 @@ function DraftCard({
           className="space-y-4"
           onSubmit={() => setSaved(true)}
         >
+          <p className="app-section-title">Outreach message</p>
           <input name="draftId" type="hidden" value={draft.id} />
           <input name="reviewDate" type="hidden" value={reviewDate} />
           <input name="approvedBy" type="hidden" value={defaultReviewerName} />
@@ -118,6 +117,7 @@ function DraftCard({
         </form>
       ) : (
         <div className="space-y-4">
+          <p className="app-section-title">Outreach message</p>
           {draft.channel === "email" && displaySubject ? (
             <div>
               <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-white/40">Subject</p>
@@ -169,7 +169,7 @@ export function DailyReview({
   databaseMode
 }: {
   reviewDate: string;
-  drafts: OutreachDraft[];
+  drafts: OutreachDraftForReview[];
   defaultReviewerName: string;
   databaseMode: "neon" | "sqlite";
 }) {

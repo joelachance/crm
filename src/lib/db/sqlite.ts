@@ -127,11 +127,18 @@ export async function ensureSqliteSchema() {
       approved_at TEXT,
       scheduled_at TEXT,
       scheduled_by TEXT,
+      research_links TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE INDEX IF NOT EXISTS idx_outreach_drafts_review_date ON outreach_drafts(review_date);
   `);
+
+  const outreachColumns = db.prepare("PRAGMA table_info(outreach_drafts)").all() as Array<{ name: string }>;
+
+  if (!outreachColumns.some((column) => column.name === "research_links")) {
+    db.exec(`ALTER TABLE outreach_drafts ADD COLUMN research_links TEXT NOT NULL DEFAULT '[]';`);
+  }
 
   db.prepare(
     `
