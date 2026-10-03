@@ -22,6 +22,15 @@ A minimal CRM built with Next.js, TypeScript, Tailwind, and Neon.
 
 The app automatically creates its tables on first use.
 
+## Deploy on Vercel
+
+1. Import the GitHub repo in [Vercel](https://vercel.com/new) (framework preset: **Next.js**).
+2. Add environment variables (see `.env.example`): at minimum `DATABASE_URL` (Neon **pooled** Postgres URL) and `ERA_SITE_PASSWORD`.
+3. Deploy. Visitors hit `/login` until they enter the shared password; a httpOnly cookie keeps the session for 30 days.
+4. Optional: `OPENAI_API_KEY`, `REVIEWER_NAME`.
+
+Local dev without `ERA_SITE_PASSWORD` skips the gate. On Vercel, `ERA_SITE_PASSWORD` is required.
+
 ## LinkedIn Browser Capture
 
 The reliable social-profile import flow is browser-assisted rather than server-side fetching.
