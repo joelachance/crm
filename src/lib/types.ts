@@ -63,3 +63,26 @@ export type PersonSummary = {
 export type PersonDetail = PersonSummary & {
   allProductTags: ProductTag[];
 };
+
+export type OutreachChannel = "email" | "linkedin";
+
+export type OutreachDraftStatus = "pending_review" | "approved" | "scheduled" | "sent";
+
+export type OutreachDraft = {
+  id: number;
+  reviewDate: string;
+  personId: number | null;
+  recipientName: string;
+  recipientCompany: string | null;
+  channel: OutreachChannel;
+  subject: string | null;
+  body: string;
+  status: OutreachDraftStatus;
+  approvedBy: string | null;
+  approvedSubject: string | null;
+  approvedBody: string | null;
+  approvedAt: string | null;
+  scheduledAt: string | null;
+  scheduledBy: string | null;
+  createdAt: string;
+};

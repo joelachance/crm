@@ -9,12 +9,13 @@ A minimal CRM built with Next.js, TypeScript, Tailwind, and Neon.
 - Manage product tags and assign them per person
 - Mark whether a person is in the ICP for each product
 - Save turn-by-turn outreach history with response tracking
+- Daily outreach review page (`/review/YYYY-MM-DD`) to edit and approve drafts without sending
 - Capture visible LinkedIn or Twitter/X profile text from a browser extension and add contacts directly with OpenAI extraction
 
 ## Setup
 
 1. Copy `.env.example` to `.env.local`
-2. Set `DATABASE_URL` to your Neon connection string
+2. Set `DATABASE_URL` to your Neon Postgres connection string (optional for local dev — without it, ERA uses `.data/era-local.sqlite`)
 3. Optionally set `OPENAI_API_KEY` to enable LinkedIn AI prefill
 4. Install dependencies with `bun install` or `npm install`
 5. Start the app with `bun run dev`
