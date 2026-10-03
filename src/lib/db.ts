@@ -1,7 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 
 import { getDatabaseMode } from "@/lib/db/mode";
-import { ensureSqliteSchema, sqliteSql } from "@/lib/db/sqlite";
 
 let client: ReturnType<typeof neon> | null = null;
 
@@ -27,6 +26,11 @@ export { getDatabaseMode, getDefaultReviewerName, isDatabaseConfigured } from "@
 
 function neonSql(strings: TemplateStringsArray, ...params: unknown[]) {
   return getNeonClient()(strings, ...params);
+}
+
+async function sqliteSql(strings: TemplateStringsArray, ...params: unknown[]) {
+  const { sqliteSql: run } = await import("@/lib/db/sqlite");
+  return run(strings, ...params);
 }
 
 export function sql(strings: TemplateStringsArray, ...params: unknown[]) {
@@ -183,6 +187,7 @@ export async function ensureSchema() {
     schemaPromise = (async () => {
       try {
         if (getDatabaseMode() === "sqlite") {
+          const { ensureSqliteSchema } = await import("@/lib/db/sqlite");
           await ensureSqliteSchema();
         } else {
           await ensurePostgresSchema();
